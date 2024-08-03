@@ -4,7 +4,8 @@ import re
 import time
 from paddleocr import PaddleOCR, draw_ocr
 
-ocr = PaddleOCR(use_angle_cls=True, lang="ch")  # need to run only once to download and load model into memory
+# need to run only once to download and load model into memory
+ocr = PaddleOCR(use_angle_cls=True, lang="ch")
 
 def get_one_picture_text(img_path: str)->list:
     text_list=[]
@@ -54,29 +55,29 @@ def on_user_select_directory(dir_path: str) -> float:
 
 
 
-class DirDialog(wx.Frame):
- 
-
-    def __init__(self):
-        wx.Frame.__init__(self, None, -1, u"文件夹选择对话框")
-        self.button = wx.Button(self, -1, u"文件夹选择对话框")
-        self.text_1 = wx.TextCtrl(self, wx.ID_ANY, "")
-        self.Bind(wx.EVT_BUTTON, self.OnButton, self.button)
-        sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        sizer_2 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_2.Add(self.text_1, 1, wx.ALL, 0)
-        sizer_2.Add(self.button, 0, 0, 0)
-        sizer_1.Add(sizer_2, 0, wx.ALL | wx.EXPAND, 0)
-        self.SetSizer(sizer_1)
-        self.Layout()
-
-    def OnButton(self, event):
-        dlg = wx.DirDialog(self, u"选择文件夹", style=wx.DD_DEFAULT_STYLE)
-        if dlg.ShowModal() == wx.ID_OK:
-            total = on_user_select_directory(dlg.GetPath())
-            self.text_1.SetValue(str(total))
-
-        dlg.Destroy()
+# class DirDialog(wx.Frame):
+#  
+#
+#     def __init__(self):
+#         wx.Frame.__init__(self, None, -1, u"文件夹选择对话框")
+#         self.button = wx.Button(self, -1, u"文件夹选择对话框")
+#         self.text_1 = wx.TextCtrl(self, wx.ID_ANY, "")
+#         self.Bind(wx.EVT_BUTTON, self.OnButton, self.button)
+#         sizer_1 = wx.BoxSizer(wx.VERTICAL)
+#         sizer_2 = wx.BoxSizer(wx.HORIZONTAL)
+#         sizer_2.Add(self.text_1, 1, wx.ALL, 0)
+#         sizer_2.Add(self.button, 0, 0, 0)
+#         sizer_1.Add(sizer_2, 0, wx.ALL | wx.EXPAND, 0)
+#         self.SetSizer(sizer_1)
+#         self.Layout()
+#
+#     def OnButton(self, event):
+#         dlg = wx.DirDialog(self, u"选择文件夹", style=wx.DD_DEFAULT_STYLE)
+#         if dlg.ShowModal() == wx.ID_OK:
+#             total = on_user_select_directory(dlg.GetPath())
+#             self.text_1.SetValue(str(total))
+#
+#         dlg.Destroy()
 
 
 if __name__ == "__main__":
