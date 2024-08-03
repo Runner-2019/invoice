@@ -37,12 +37,12 @@ class MainFrame(wx.Frame):
         box_input.Add(self.text_input,    0, wx.RIGHT | wx.ALIGN_CENTER, 10)
         box_input.Add(self.label_inputed, 0, wx.RIGHT | wx.ALIGN_CENTER, 10)
 
-        bt_compute = wx.Button(self, -1, u"开始计算")
-        bt_compute.Bind(wx.EVT_BUTTON,self.start_to_compute)
+        self.bt_compute = wx.Button(self, -1, u"开始计算")
+        self.bt_compute.Bind(wx.EVT_BUTTON,self.start_to_compute)
         self.gauge = wx.Gauge(self, range=100, size=(180, 20))
         self.gauge.SetValue(0)
         box_compute=wx.BoxSizer(wx.VERTICAL)
-        box_compute.Add(bt_compute, 0, wx.DOWN, 10)
+        box_compute.Add(self.bt_compute, 0, wx.DOWN, 10)
         box_compute.Add(self.gauge, 0, wx.DOWN, 10)
 
 
@@ -70,8 +70,10 @@ class MainFrame(wx.Frame):
 
     def start_to_compute(self, evt):
         print("start to compute")
+        self.bt_compute.Disable()
         ocr_handle = OCRHandle(self, self.invoices_dir, self.prompt)
         ocr_handle.run()
+        self.bt_compute.Enable()
 
     def on_input(self, evt):
         input_text=self.text_input.GetValue()
