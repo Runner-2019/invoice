@@ -7,8 +7,6 @@ from ocr import OCRHandle
 # universal API format:  parent, id, title, pos, size, style
 # -1 always represents default id
 
-APP_ICON = './resource/rabbit.png'
-
 class OcrThread(Thread):
     def __init__(self, app, ocr_handle):
         Thread.__init__(self)
@@ -29,7 +27,6 @@ class MainFrame(wx.Frame):
         wx.Frame.__init__(self, parent=None, id=-1, title=u"计算发票总金额", size=(640, 480))
         self.SetBackgroundColour(wx.Colour(206, 115, 168))
         self.Center()
-        self.SetIcon(wx.Icon(APP_ICON))
 
         box_main = wx.BoxSizer(wx.VERTICAL)
 
