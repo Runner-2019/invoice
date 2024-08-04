@@ -63,11 +63,13 @@ class MainFrame(wx.Frame):
         box_compute.Add(self.gauge, 0, wx.DOWN, 10)
 
 
-        self.result1 = wx.StaticText(self, -1, "总金额: 0",    style=wx.ALIGN_LEFT)
-        self.result2 = wx.StaticText(self, -1, "详细文件: 无", style=wx.ALIGN_LEFT)
+        self.result1 = wx.StaticText(self, -1, "注意: 无",     style=wx.ALIGN_LEFT)
+        self.result2 = wx.StaticText(self, -1, "总金额: 无",    style=wx.ALIGN_LEFT)
+        self.result3 = wx.StaticText(self, -1, "详细日志文件: 无", style=wx.ALIGN_LEFT)
         box_result= wx.BoxSizer(wx.VERTICAL)
         box_result.Add(self.result1, 0)
         box_result.Add(self.result2, 0)
+        box_result.Add(self.result3, 0)
         self.detailed_result=""
 
         box_main.Add(hint_text,   0, wx.DOWN | wx.EXPAND, 20)
@@ -96,15 +98,34 @@ class MainFrame(wx.Frame):
 
     def __on_start_compute(self, evt):
         print("Start to compute......")
+        self.result1.SetLabel("注意: 无")
+        self.result2.SetLabel("总金额: 无")
+        self.result3.SetLabel("详细日志文件: 无")
         self.btn_compute.Disable()
         ocr_handle = OCRHandle(self.invoices_dir, self.prompt)
         ocr_thread = OcrThread(self, ocr_handle)
         ocr_thread.start()
 
-    def finish_compute(self, result: float, detailed_result_file: str):
+
+    def __make_note(self, total: int, succ: int, fail: int) -> str:
+        detailed=""
+        if succ != 0 and fail != 0 and total == succ + fail:
+            detailed += "部分发票计算成功，部分发票计算失败。"
+        elif fail == 0:
+            detailed += "所有发票金额均计算成功。"
+        elif succ == 0:
+            detailed += "所有发票金额均计算失败。"
+        else:
+            detailed += "本程序内部错误。"
+        detailed += "打开本程序同级目录下的日志文件，查看详细信息。"
+        return detailed
+
+
+    def finish_compute(self, total: int, succ: int, fail: int, result_account: float, detailed_result_file: str):
         print("Finished compute.")
-        self.result1.SetLabel(f"😋  总金额: {result}")
-        self.result2.SetLabel(f"😋  详细文件: {detailed_result_file}")
+        self.result1.SetLabel(f"😋  注意: {self.__make_note(total, succ, fail)}")
+        self.result2.SetLabel(f"😋  总金额: {result_account}")
+        self.result3.SetLabel(f"😋  详细日志文件: {detailed_result_file}")
         self.detailed_result=detailed_result_file
         self.btn_compute.Enable()
         self.gauge.SetValue(0)

@@ -139,7 +139,6 @@ class OCRHandle:
                 self.fail_para.add_run().add_picture(invoice, width=Inches(6))
                 self.fail_para.add_run("\n")
 
-
     def __finish_one_picture(self):
         print("__finish_one_picture")
         self.cur_account = 0
@@ -188,5 +187,9 @@ class OCRHandle:
         print(f'total account of all tickets: {total_account}')
         wx.CallAfter(pub.sendMessage,
                      "finish_compute",
-                     result=total_account,
-                     detailed_result_file=self.log_file)
+                     total=self.total_invoices_count,
+                     succ=len(self.total_account_list),
+                     fail=len(self.total_error_invoice_list),
+                     result_account=total_account,
+                     detailed_result_file=self.log_file,
+                     )
