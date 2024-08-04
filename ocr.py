@@ -24,7 +24,7 @@ class OCRHandle:
         self.prompt = prompt
         self.total_invoices_count = 0
         self.total_error_invoice_list=[]
-        self.total_account = 0            # invoice account of all invoice pictures
+        self.total_account_list = []      # invoice account of all invoice pictures
         self.cur_invoice_path = ""        # invoice picture which is currently handling
         self.cur_invoice_index = 0        # invoice picture index of all invoices
         self.cur_account = 0              # invoice account
@@ -32,6 +32,9 @@ class OCRHandle:
         self.cur_text_list = []           # invoice picture to text
         self.log_file = ""                # detailed log in docx format
         self.document = None              # python docx
+        self.succ_para = None             # success paragraph
+        self.fail_para = None
+        self.conclude_para  = None
 
 
     # Convert picture to text list, discards box coordinates and predicate score.
@@ -90,9 +93,11 @@ class OCRHandle:
         with open(file_path, 'w') as file:
             pass # create
 
-        self.log_file = file_path
-        self.document = Document()
-        self.document.add_heading("Document heading")
+        self.log_file  = file_path
+        self.document  = Document()
+        self.succ_para = self.document.add_heading("1.正常解析的发票\n")
+        self.fail_para = self.document.add_heading("2.解析失败的发票\n")
+        self.conclude_para = self.document.add_heading("3.总结\n")
 
 
     # if is_success, then append current picture to success part.
@@ -101,15 +106,38 @@ class OCRHandle:
             self.__creat_log_file()
 
         if is_success:
-            self.document.add_picture(self.cur_invoice_path, width=Inches(6))
-            self.document.add_paragraph(f"result: {self.cur_account}")
-            self.document.add_paragraph("\n")
+            # self.document.add_picture(self.cur_invoice_path, width=Inches(6))
+            # self.document.add_paragraph(f"result: {self.cur_account}")
+            # self.document.add_paragraph("\n")
+
+            self.succ_para.add_run().add_picture(self.cur_invoice_path, width=Inches(6))
+            self.succ_para.add_run(f"上图中的发票金额: {self.cur_account}")
+            self.succ_para.add_run("\n")
+
+    def __make_conclue(self):
+        formula = ""
+        for index, account in enumerate(self.total_account_list):
+            if index == 0:
+                formula += f"{account}"
+            else:
+                formula += f" + {account}"
+        formula += f" = {sum(self.total_account_list)}"
+        self.conclude_para.add_run("正常解析的发票的计算公式:\n")
+        self.conclude_para.add_run(formula)
+        self.conclude_para.add_run("\n")
+
+        if not self.total_error_invoice_list:
+            self.fail_para.add_run("无\n")
         else:
-            pass
+            self.conclude_para.add_run("下面的文件解析失败了:\n")
+            for invoice in self.total_error_invoice_list:
+                self.fail_para.add_run().add_picture(invoice, width=Inches(6))
+                self.fail_para.add_run("\n")
+
 
     def __finish_one_picture(self):
         print("__finish_one_picture")
-        self.total_account += self.cur_account
+        self.total_account_list.append(self.cur_account)
         self.cur_account = 0
         self.cur_invoice_path = ""
         self.cur_account_str = ""
@@ -145,9 +173,13 @@ class OCRHandle:
                     self.__append_to_detail_log(False)
                 self.__finish_one_picture()
 
-        print(f'total account of all tickets: {self.total_account}')
+        print(f'start to write to file.')
+        self.__make_conclue()
         self.document.save(self.log_file)
+
+        total_account = sum(self.total_account_list)
+        print(f'total account of all tickets: {total_account}')
         wx.CallAfter(pub.sendMessage,
                      "finish_compute",
-                     result=self.total_account,
+                     result=total_account,
                      detailed_result_file=self.log_file)
