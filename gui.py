@@ -10,8 +10,9 @@ from ocr import OCRHandle
 APP_ICON = './resource/rabbit.png'
 
 class OcrThread(Thread):
-    def __init__(self, ocr_handle):
+    def __init__(self, app, ocr_handle):
         Thread.__init__(self)
+        self.app = app
         self.ocr_handle = ocr_handle
 
     def run(self):
@@ -19,8 +20,7 @@ class OcrThread(Thread):
             self.ocr_handle.run()
         except Exception as e:
             print(e)
-            self.ocr_handle.app.show_message(str(e))
-        wx.CallAfter(pub.sendMessage, "finish_compute")
+            self.app.show_message(str(e))
 
 
 class MainFrame(wx.Frame):
@@ -32,14 +32,14 @@ class MainFrame(wx.Frame):
 
         box_main = wx.BoxSizer(wx.VERTICAL)
 
-        hint_content = u"😋使用指南: 选择发票 -> 输入提示词 -> 开始计算 "
+        hint_content = u"😋  使用指南: 选择发票  ---> 输入提示词  --->  开始计算"
         hint_text = wx.StaticText(self, -1, hint_content, style=wx.ALIGN_CENTER)
 
-        bt_choose = wx.Button(self, -1, u"选择发票")
-        bt_choose.Bind(wx.EVT_BUTTON,self.__on_choose_invoice_directory)
+        btn_choose = wx.Button(self, -1, u"选择发票")
+        btn_choose.Bind(wx.EVT_BUTTON,self.__on_choose_invoice_directory)
         self.dir_hint_text = wx.StaticText(self, -1, "", style=wx.ALIGN_LEFT)
         box_invoice = wx.BoxSizer(wx.HORIZONTAL)
-        box_invoice.Add(bt_choose, 0, wx.RIGHT, border=20)
+        box_invoice.Add(btn_choose, 0, wx.RIGHT, border=20)
         box_invoice.Add(self.dir_hint_text, 0, wx.RIGHT, border=00)
         self.invoices_dir=""
 
@@ -53,16 +53,16 @@ class MainFrame(wx.Frame):
         box_input.Add(self.text_input,    0, wx.RIGHT | wx.ALIGN_CENTER, 10)
         box_input.Add(self.label_inputed, 0, wx.RIGHT | wx.ALIGN_CENTER, 10)
 
-        self.bt_compute = wx.Button(self, -1, u"开始计算")
-        self.bt_compute.Bind(wx.EVT_BUTTON,self.__on_start_compute)
+        self.btn_compute = wx.Button(self, -1, u"开始计算")
+        self.btn_compute.Bind(wx.EVT_BUTTON,self.__on_start_compute)
         self.gauge = wx.Gauge(self, range=100, size=(180, 20))
         self.gauge.SetValue(0)
         box_compute=wx.BoxSizer(wx.VERTICAL)
-        box_compute.Add(self.bt_compute, 0, wx.DOWN, 10)
+        box_compute.Add(self.btn_compute, 0, wx.DOWN, 10)
         box_compute.Add(self.gauge, 0, wx.DOWN, 10)
 
 
-        self.result1 = wx.StaticText(self, -1, "总金额: 0",  style=wx.ALIGN_LEFT)
+        self.result1 = wx.StaticText(self, -1, "总金额: 0",    style=wx.ALIGN_LEFT)
         self.result2 = wx.StaticText(self, -1, "详细文件: 无", style=wx.ALIGN_LEFT)
         box_result= wx.BoxSizer(wx.VERTICAL)
         box_result.Add(self.result1, 0)
@@ -77,6 +77,7 @@ class MainFrame(wx.Frame):
         self.SetSizer(box_main)
 
         pub.subscribe(self.finish_compute, 'finish_compute')
+        pub.subscribe(self.update_process, 'update_process')
 
     def __on_choose_invoice_directory(self, event):
         dlg = wx.DirDialog(self, u"选择发票所在文件夹", style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
@@ -92,23 +93,23 @@ class MainFrame(wx.Frame):
         self.label_inputed.SetLabel(f"已输入了{number}个提示符，分别是: {self.prompt}")
 
     def __on_start_compute(self, evt):
-        print("start to compute")
-        self.bt_compute.Disable()
-        ocr_handle = OCRHandle(self, self.invoices_dir, self.prompt)
-        ocr_thread = OcrThread(ocr_handle)
+        print("Start to compute......")
+        self.btn_compute.Disable()
+        ocr_handle = OCRHandle(self.invoices_dir, self.prompt)
+        ocr_thread = OcrThread(self, ocr_handle)
         ocr_thread.start()
 
-    def finish_compute(self):
-        self.bt_compute.Enable()
+    def finish_compute(self, result: float, detailed_result_file: str):
+        print("Finished compute.")
+        self.result1.SetLabel(f"😋  总金额: {result}")
+        self.result2.SetLabel(f"😋  详细文件: {detailed_result_file}")
+        self.detailed_result=detailed_result_file
+        self.btn_compute.Enable()
 
     def show_message(self, message: str):
         wx.MessageDialog(self, message, "操作出错").ShowModal()
 
     def update_process(self, count: int):
+        print(f"Update process: {count}")
         self.gauge.SetValue(count)
-
-    def set_result(self, result: float, detailed_result_file: str):
-        self.result1.SetLabel(f"😋 总金额: {result}")
-        self.result2.SetLabel(f"😋 详细文件: {detailed_result_file}")
-        self.detailed_result=detailed_result_file
 

@@ -1,6 +1,8 @@
 import os
+import wx
 import imghdr
-from datetime import datetime
+from pubsub    import pub
+from datetime  import datetime
 from paddleocr import PaddleOCR
 
 def is_image_file(filename) -> bool:
@@ -14,25 +16,18 @@ def count_files_in_directory(directory_path) -> int:
 OCR = PaddleOCR( show_log=False, use_angle_cls=True, lang="ch")
 
 class OCRHandle:
-    # The gui application must contain these API:
-    #      1. update_process()
-    #      2. set_result()
-    def __init__(self, app, invoices_path, prompt):
-        # passed-in paramters
-        self.app = app
+    def __init__(self, invoices_path: str, prompt: list):
         self.invoices_path = invoices_path
         self.prompt = prompt
         self.total_invoices_count = 0
         self.total_error_invoice_list=[]
-
-        # inner paramters
-        self.total_account = 0      # invoice account of all invoice pictures
-        self.cur_invoice_path = ""  # invoice picture which is currently handling
-        self.cur_invoice_index = 0  # invoice picture index of all invoices
-        self.cur_account = 0        # invoice account
-        self.cur_account_str = ""   # invoice account string
-        self.cur_text_list = []     # invoice picture to text
-        self.cur_log = ""           # detailed log in docx format
+        self.total_account = 0            # invoice account of all invoice pictures
+        self.cur_invoice_path = ""        # invoice picture which is currently handling
+        self.cur_invoice_index = 0        # invoice picture index of all invoices
+        self.cur_account = 0              # invoice account
+        self.cur_account_str = ""         # invoice account string
+        self.cur_text_list = []           # invoice picture to text
+        self.log_file = ""                # detailed log in docx format
 
 
     # Convert picture to text list, discards box coordinates and predicate score.
@@ -66,13 +61,16 @@ class OCRHandle:
 
         # exactly one
         self.cur_account_str = account_str_list[0]
-        print(f'account string: {self.cur_account_str}')
+        print(f'Index: {self.cur_invoice_index}, \
+              account string: {self.cur_account_str} of invoice picture: {self.cur_invoice_path}')
+
         numbers = re.findall(r'\d+\.\d+|\d+', self.cur_account_str)
         if len(numbers) != 1:
             raise RuntimeError("too many accounts from account string")
 
         self.cur_account = float(numbers[0])
-        print(f'account number: {self.cur_account}')
+        print(f'Index: {self.cur_invoice_index}, \
+              account number: {self.cur_account} of invoice picture: {self.cur_invoice_path}')
 
 
     def __creat_log_file(self):
@@ -80,7 +78,7 @@ class OCRHandle:
         file_name = f"{current_datetime_str}.doc"
         with open(file_name, 'w') as file:
             pass
-        self.cur_log = file_name
+        self.log_file = file_name
 
 
     # if is_success, then append current picture to success part.
@@ -91,6 +89,7 @@ class OCRHandle:
             pass
 
     def __finish_one_picture(self):
+        print("__finish_one_picture")
         self.total_account += self.cur_account
         self.cur_account = 0
         self.cur_invoice_path = ""
@@ -119,7 +118,7 @@ class OCRHandle:
                     self.__check_text_list()
                     self.__append_to_detail_log(True)
                     cur_progress = int(self.cur_invoice_index * 1.0 / self.total_invoices_count * 100)
-                    self.app.update_process(cur_progress)
+                    wx.CallAfter(pub.sendMessage, "update_process", count=cur_progress)
                 except Exception as e:
                     print(str(e))
                     self.total_error_invoice_list.append(self.cur_invoice_path)
@@ -127,4 +126,7 @@ class OCRHandle:
                 self.__finish_one_picture()
 
         print(f'total account of all tickets: {self.total_account}')
-        self.app.set_result(self.total_account, self.cur_log)
+        wx.CallAfter(pub.sendMessage,
+                     "finish_compute",
+                     result=self.total_account,
+                     detailed_result_file=self.log_file)
