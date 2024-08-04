@@ -116,20 +116,25 @@ class OCRHandle:
 
     def __make_conclue(self):
         formula = ""
-        for index, account in enumerate(self.total_account_list):
-            if index == 0:
-                formula += f"{account}"
-            else:
-                formula += f" + {account}"
-        formula += f" = {sum(self.total_account_list)}"
-        self.conclude_para.add_run("正常解析的发票的计算公式:\n")
-        self.conclude_para.add_run(formula)
-        self.conclude_para.add_run("\n")
+        # exists at least one successfully parsed invoice picture
+        if self.total_account_list:
+            for index, account in enumerate(self.total_account_list):
+                if index == 0:
+                    formula += f"{account}"
+                else:
+                    formula += f" + {account}"
+            formula += f" = {sum(self.total_account_list)}"
+
+            self.conclude_para.add_run("正常解析的发票的计算公式:\n")
+            self.conclude_para.add_run(formula)
+            self.conclude_para.add_run("\n")
+        else:
+            self.succ_para.add_run("无\n")
+            self.conclude_para.add_run("所有发票都解析失败了\n")
 
         if not self.total_error_invoice_list:
             self.fail_para.add_run("无\n")
         else:
-            self.conclude_para.add_run("下面的文件解析失败了:\n")
             for invoice in self.total_error_invoice_list:
                 self.fail_para.add_run().add_picture(invoice, width=Inches(6))
                 self.fail_para.add_run("\n")
@@ -137,7 +142,6 @@ class OCRHandle:
 
     def __finish_one_picture(self):
         print("__finish_one_picture")
-        self.total_account_list.append(self.cur_account)
         self.cur_account = 0
         self.cur_invoice_path = ""
         self.cur_account_str = ""
@@ -157,6 +161,7 @@ class OCRHandle:
             if os.path.isfile(invoice):
                 if not is_image_file(invoice):
                     continue
+
                 try:
                     print(f"dealing: {invoice}")
                     self.cur_invoice_path = invoice
@@ -164,13 +169,15 @@ class OCRHandle:
                     self.__convert_once()
                     self.__check_text_list()
                     self.__get_cur_account()
+                    self.total_account_list.append(self.cur_account)
                     self.__append_to_detail_log(True)
-                    cur_progress = int(self.cur_invoice_index * 1.0 / self.total_invoices_count * 100)
-                    wx.CallAfter(pub.sendMessage, "update_process", count=cur_progress)
                 except Exception as e:
                     print(str(e))
                     self.total_error_invoice_list.append(self.cur_invoice_path)
                     self.__append_to_detail_log(False)
+
+                cur_progress = int(self.cur_invoice_index * 1.0 / self.total_invoices_count * 100)
+                wx.CallAfter(pub.sendMessage, "update_process", count=cur_progress)
                 self.__finish_one_picture()
 
         print(f'start to write to file.')

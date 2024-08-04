@@ -107,9 +107,11 @@ class MainFrame(wx.Frame):
         self.result2.SetLabel(f"😋  详细文件: {detailed_result_file}")
         self.detailed_result=detailed_result_file
         self.btn_compute.Enable()
+        self.gauge.SetValue(0)
 
     def on_execute_error(self):
         self.btn_compute.Enable()
+        self.gauge.SetValue(0)
 
     def show_message(self, message: str):
         wx.MessageDialog(self, message, "操作出错").ShowModal()
