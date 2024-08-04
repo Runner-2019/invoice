@@ -21,6 +21,7 @@ class OcrThread(Thread):
         except Exception as e:
             print(e)
             self.app.show_message(str(e))
+            wx.CallAfter(pub.sendMessage, "execute_error")
 
 
 class MainFrame(wx.Frame):
@@ -43,10 +44,10 @@ class MainFrame(wx.Frame):
         box_invoice.Add(self.dir_hint_text, 0, wx.RIGHT, border=00)
         self.invoices_dir=""
 
-        input_label = wx.StaticText(self, -1, u"输入提示词\n(逗号分割, 回车确认):")
-        self.text_input = wx.TextCtrl(self, -1, "", style=wx.TE_PROCESS_ENTER, size=(100, 30))
+        input_label = wx.StaticText(self, -1, u"输入提示词\n用于从发票图片中提取发票金额\n(英文逗号分割, 回车确认):")
+        self.text_input = wx.TextCtrl(self, -1, "小写,", style=wx.TE_PROCESS_ENTER, size=(100, 30))
         self.text_input.Bind(wx.EVT_TEXT_ENTER, self.__on_input_prompt)
-        self.label_inputed = wx.StaticText(self, -1, "默认提示符: \"小写\", 用于从发票图片中提取发票金额")
+        self.label_inputed = wx.StaticText(self, -1, "当前使用的提示符: \"小写\"")
         self.prompt=["小写"]
         box_input = wx.BoxSizer(wx.HORIZONTAL)
         box_input.Add(input_label,        0, wx.RIGHT, 10)
@@ -76,14 +77,15 @@ class MainFrame(wx.Frame):
         box_main.Add(box_result,  0, wx.LEFT | wx.DOWN,   20)
         self.SetSizer(box_main)
 
-        pub.subscribe(self.finish_compute, 'finish_compute')
-        pub.subscribe(self.update_process, 'update_process')
+        pub.subscribe(self.finish_compute,   'finish_compute')
+        pub.subscribe(self.update_process,   'update_process')
+        pub.subscribe(self.on_execute_error, 'execute_error')
 
     def __on_choose_invoice_directory(self, event):
         dlg = wx.DirDialog(self, u"选择发票所在文件夹", style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
         if dlg.ShowModal() == wx.ID_OK:
             self.invoices_dir = dlg.GetPath()
-            self.dir_hint_text.SetLabel(f"已选择的发票文件夹路径: {dlg.GetPath()}")
+            self.dir_hint_text.SetLabel(f"已选路径: {dlg.GetPath()}")
         dlg.Destroy()
 
     def __on_input_prompt(self, evt):
@@ -104,6 +106,9 @@ class MainFrame(wx.Frame):
         self.result1.SetLabel(f"😋  总金额: {result}")
         self.result2.SetLabel(f"😋  详细文件: {detailed_result_file}")
         self.detailed_result=detailed_result_file
+        self.btn_compute.Enable()
+
+    def on_execute_error(self):
         self.btn_compute.Enable()
 
     def show_message(self, message: str):

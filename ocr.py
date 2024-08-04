@@ -1,5 +1,6 @@
 import os
 import wx
+import re
 import imghdr
 from pubsub    import pub
 from datetime  import datetime
@@ -47,7 +48,7 @@ class OCRHandle:
 
     # Extract account number from text list
     def __get_cur_account(self):
-        account_str_list=[]
+        account_str_list = []
         for text in self.cur_text_list:
             for prompt in self.prompt:
                 if text.find(prompt) != -1:
@@ -61,16 +62,14 @@ class OCRHandle:
 
         # exactly one
         self.cur_account_str = account_str_list[0]
-        print(f'Index: {self.cur_invoice_index}, \
-              account string: {self.cur_account_str} of invoice picture: {self.cur_invoice_path}')
+        print(f'Index: {self.cur_invoice_index}, account string: {self.cur_account_str} of invoice picture: {self.cur_invoice_path}')
 
         numbers = re.findall(r'\d+\.\d+|\d+', self.cur_account_str)
         if len(numbers) != 1:
             raise RuntimeError("too many accounts from account string")
 
         self.cur_account = float(numbers[0])
-        print(f'Index: {self.cur_invoice_index}, \
-              account number: {self.cur_account} of invoice picture: {self.cur_invoice_path}')
+        print(f'Index: {self.cur_invoice_index}, account number: {self.cur_account} of invoice picture: {self.cur_invoice_path}')
 
 
     def __creat_log_file(self):
@@ -116,6 +115,7 @@ class OCRHandle:
                     self.cur_invoice_index += 1
                     self.__convert_once()
                     self.__check_text_list()
+                    self.__get_cur_account()
                     self.__append_to_detail_log(True)
                     cur_progress = int(self.cur_invoice_index * 1.0 / self.total_invoices_count * 100)
                     wx.CallAfter(pub.sendMessage, "update_process", count=cur_progress)
