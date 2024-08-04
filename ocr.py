@@ -2,9 +2,11 @@ import os
 import wx
 import re
 import imghdr
-from pubsub    import pub
-from datetime  import datetime
-from paddleocr import PaddleOCR
+from pubsub      import pub
+from datetime    import datetime
+from paddleocr   import PaddleOCR
+from docx        import Document
+from docx.shared import Inches
 
 def is_image_file(filename) -> bool:
     img_type = imghdr.what(filename)
@@ -29,6 +31,7 @@ class OCRHandle:
         self.cur_account_str = ""         # invoice account string
         self.cur_text_list = []           # invoice picture to text
         self.log_file = ""                # detailed log in docx format
+        self.document = None              # python docx
 
 
     # Convert picture to text list, discards box coordinates and predicate score.
@@ -73,17 +76,34 @@ class OCRHandle:
 
 
     def __creat_log_file(self):
+        path="./results"
+        if not os.path.exists(path):
+            os.makedirs(path)
+
         current_datetime_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        file_name = f"{current_datetime_str}.doc"
-        with open(file_name, 'w') as file:
-            pass
-        self.log_file = file_name
+        filename = current_datetime_str
+        while os.path.exists(os.path.join(path, filename)):
+            counter += 1
+            filename = f"{base_filename}_no_{counter}"
+
+        file_path = f"{path}/{filename}.doc"
+        with open(file_path, 'w') as file:
+            pass # create
+
+        self.log_file = file_path
+        self.document = Document()
+        self.document.add_heading("Document heading")
 
 
     # if is_success, then append current picture to success part.
     def __append_to_detail_log(self, is_success):
+        if not self.log_file:
+            self.__creat_log_file()
+
         if is_success:
-            pass
+            self.document.add_picture(self.cur_invoice_path, width=Inches(6))
+            self.document.add_paragraph(f"result: {self.cur_account}")
+            self.document.add_paragraph("\n")
         else:
             pass
 
@@ -126,6 +146,7 @@ class OCRHandle:
                 self.__finish_one_picture()
 
         print(f'total account of all tickets: {self.total_account}')
+        self.document.save(self.log_file)
         wx.CallAfter(pub.sendMessage,
                      "finish_compute",
                      result=self.total_account,
