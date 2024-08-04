@@ -2,3 +2,6 @@
 **/__pycache__
 **/.DS_Store
 **/*.doc
+build/
+dist/
+spec
